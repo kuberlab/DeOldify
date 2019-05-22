@@ -44,7 +44,11 @@ class BaseFilter(IFilter):
         x = pil2tensor(model_image, np.float32)
         x.div_(255)
         x, y = self.norm((x, x), do_x=True)
-        result = self.driver.predict({'0': x[None]})
+        if torch.cuda.is_available():
+            x_input = x[None].cuda()
+        else:
+            x_input = x[None]
+        result = self.driver.predict({'0': x_input})
         # result = self.learn.pred_batch(ds_type=DatasetType.Valid,
         #                                batch=(x[None].cuda(), y[None]), reconstruct=True)
 
