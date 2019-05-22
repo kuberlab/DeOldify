@@ -9,7 +9,11 @@ class FeatureLoss(nn.Module):
     def __init__(self, layer_wgts=[20,70,10]):
         super().__init__()
 
-        self.m_feat = models.vgg16_bn(True).features.cuda().eval()
+        self.m_feat = models.vgg16_bn(True).features
+        if torch.cuda.is_available():
+            self.m_feat = self.m_feat.cuda()
+
+        self.m_feat = self.m_feat.eval()
         requires_grad(self.m_feat, False)
         blocks = [i-1 for i,o in enumerate(children(self.m_feat)) if isinstance(o,nn.MaxPool2d)]
         layer_ids = blocks[2:5]

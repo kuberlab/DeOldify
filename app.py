@@ -20,7 +20,7 @@ from pathlib import Path
 
 torch.backends.cudnn.benchmark=True
 
-image_colorizer = get_image_colorizer(artistic=True)
+image_colorizer = get_image_colorizer(artistic=False)
 video_colorizer = get_video_colorizer()
 
 os.environ['CUDA_VISIBLE_DEVICES']='0'
