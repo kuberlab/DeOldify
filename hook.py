@@ -42,15 +42,15 @@ class BaseFilter(IFilter):
     def _model_process(self, orig: PilImage, sz: int) -> PilImage:
         model_image = self._get_model_ready_image(orig, sz)
         x = pil2tensor(model_image, np.float32)
-        # __import__('ipdb').set_trace()
         x.div_(255)
         x, y = self.norm((x, x), do_x=True)
         result = self.driver.predict({'0': x[None]})
         # result = self.learn.pred_batch(ds_type=DatasetType.Valid,
         #                                batch=(x[None].cuda(), y[None]), reconstruct=True)
-        out = torch.Tensor(result['0']).clamp(min=0, max=1)
-        out = self.denorm(out, do_x=False)
-        out = image2np(out[0]).astype(np.uint8)
+
+        out = torch.Tensor(result['0'])
+        out = self.denorm(out, do_x=True).clamp(min=0, max=1)
+        out = image2np(out[0] * 255).astype(np.uint8)
         return PilImage.fromarray(out)
 
     def _unsquare(self, image: PilImage, orig: PilImage) -> PilImage:
