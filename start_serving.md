@@ -25,8 +25,13 @@ kdataset --type model push <workspace> deoldify:1.0.0-stable-pytorch
 * Click to Versions tab, click "Serve"
 * Configure serving such as the following:
 
-**Note**: Pick up the appropriate workspace, cluster and name.
-
-If you don't have an available GPU, then change **GPU** parameter in **Resources** section to 0.
-
 ![](imgs/serving.png)
+
+> **Note**: Pick up the appropriate workspace, cluster and name.
+
+> If you don't have an available GPU, then change **GPU** parameter in **Resources** section to 0.
+
+* Click **Serve**
+* Wait for container is up and running (look at the **Status** Tab periodically and click "Refresh")
+* Go to **Parameters** Tab
+* Choose an image at bottom and click **Apply**
