@@ -1,29 +1,19 @@
-from abc import ABC
-from fastai.vision import *
-from fastai.vision.image import *
-from fastai.vision.data import *
+from fastai.vision import data
+import numpy as np
 import torch
 import cv2
-from ml_serving.drivers import driver
-from PIL import Image as PilImage
 
 
-class IFilter(ABC):
-    @abstractmethod
-    def filter(self, orig_image: PilImage, filtered_image: PilImage, render_factor: int) -> PilImage:
-        pass
-
-
-class BaseFilter(IFilter):
-    def __init__(self, driver: driver.ServingDriver):
+class BaseFilter(object):
+    def __init__(self, driver):
         super().__init__()
         self.driver = driver
-        self.norm, self.denorm = normalize_funcs(*imagenet_stats)
+        self.norm, self.denorm = data.normalize_funcs(*data.imagenet_stats)
 
-    def _transform(self, image: PilImage) -> PilImage:
+    def _transform(self, image):
         return image
 
-    def _scale_to_square(self, orig, targ: int) -> PilImage:
+    def _scale_to_square(self, orig, targ: int):
         # a simple stretch to fit a square really makes a big difference in rendering quality/consistency.
         # I've tried padding to the square as well (reflect, symetric, constant, etc).  Not as good!
         targ_sz = (targ, targ)
@@ -35,7 +25,7 @@ class BaseFilter(IFilter):
         result = self._transform(result)
         return result
 
-    def _model_process(self, orig, sz: int) -> PilImage:
+    def _model_process(self, orig, sz: int):
         model_image = self._get_model_ready_image(orig, sz)
         # x = pil2tensor(model_image, np.float32)
         x = torch.from_numpy(model_image.transpose([2, 0, 1]).astype(np.float32))
@@ -52,7 +42,7 @@ class BaseFilter(IFilter):
 
         out = torch.Tensor(result['0'])
         out = self.denorm(out, do_x=True).clamp(min=0, max=1)
-        out = image2np(out[0] * 255).astype(np.uint8)
+        out = data.image2np(out[0] * 255).astype(np.uint8)
         return out
 
     def _unsquare(self, image, orig):
@@ -62,7 +52,7 @@ class BaseFilter(IFilter):
 
 
 class ColorizerFilter(BaseFilter):
-    def __init__(self, driver: driver.ServingDriver, map_to_orig: bool = True):
+    def __init__(self, driver, map_to_orig: bool = True):
         super().__init__(driver=driver)
         self.render_base = 16
         self.map_to_orig = map_to_orig
@@ -104,7 +94,7 @@ class ColorizerFilter(BaseFilter):
 
 
 class MasterFilter(BaseFilter):
-    def __init__(self, filters: [IFilter], render_factor: int):
+    def __init__(self, filters, render_factor: int):
         self.filters = filters
         self.render_factor = render_factor
 
