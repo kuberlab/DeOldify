@@ -1,14 +1,23 @@
-from fastai.vision import data
 import numpy as np
-import torch
 import cv2
+
+
+# from fastai.vision.data
+# imagenet_stats
+mean = np.array([0.485, 0.456, 0.406]).reshape([3, 1, 1])
+std = np.array([0.229, 0.224, 0.225]).reshape([3, 1, 1])
 
 
 class BaseFilter(object):
     def __init__(self, driver):
         super().__init__()
         self.driver = driver
-        self.norm, self.denorm = data.normalize_funcs(*data.imagenet_stats)
+
+    def denorm(self, x):
+        return x * std + mean
+
+    def norm(self, x):
+        return (x-mean) / std
 
     def _transform(self, image):
         return image
@@ -18,7 +27,6 @@ class BaseFilter(object):
         # I've tried padding to the square as well (reflect, symetric, constant, etc).  Not as good!
         targ_sz = (targ, targ)
         return cv2.resize(orig, targ_sz, interpolation=cv2.INTER_AREA)
-        # return orig.resize(targ_sz, resample=PIL.Image.BILINEAR)
 
     def _get_model_ready_image(self, orig, sz: int):
         result = self._scale_to_square(orig, sz)
@@ -27,22 +35,16 @@ class BaseFilter(object):
 
     def _model_process(self, orig, sz: int):
         model_image = self._get_model_ready_image(orig, sz)
-        # x = pil2tensor(model_image, np.float32)
-        x = torch.from_numpy(model_image.transpose([2, 0, 1]).astype(np.float32))
-        # x shape: [C, H, W]
-        x.div_(255)
-        x, y = self.norm((x, x), do_x=True)
-        if torch.cuda.is_available():
-            x_input = x[None].cuda()
-        else:
-            x_input = x[None]
-        result = self.driver.predict({'0': x_input})
-        # result = self.learn.pred_batch(ds_type=DatasetType.Valid,
-        #                                batch=(x[None].cuda(), y[None]), reconstruct=True)
+        x = np.divide(model_image.transpose([2, 0, 1]), 255)
+        x = self.norm(x)
+        x = np.expand_dims(x, axis=0)
 
-        out = torch.Tensor(result['0'])
-        out = self.denorm(out, do_x=True).clamp(min=0, max=1)
-        out = data.image2np(out[0] * 255).astype(np.uint8)
+        result = self.driver.predict({'0': x})
+
+        out = result['0']
+        out = self.denorm(out).clip(min=0, max=1)
+        out = out.squeeze().transpose([1, 2, 0]) * 255
+        out = out.astype(np.uint8)
         return out
 
     def _unsquare(self, image, orig):
@@ -69,7 +71,6 @@ class ColorizerFilter(BaseFilter):
     def _transform(self, image):
         image = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
         return cv2.cvtColor(image, cv2.COLOR_GRAY2RGB)
-        # return image.convert('LA').convert('RGB')
 
     # This takes advantage of the fact that human eyes are much less sensitive to
     # imperfections in chrominance compared to luminance.  This means we can
@@ -89,7 +90,6 @@ class ColorizerFilter(BaseFilter):
         hires = np.copy(orig_yuv)
         hires[:, :, 1:3] = color_yuv[:, :, 1:3]
         final = cv2.cvtColor(hires, cv2.COLOR_YUV2BGR)
-        # final = PilImage.fromarray(final)
         return final
 
 
