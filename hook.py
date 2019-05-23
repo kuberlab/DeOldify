@@ -127,6 +127,14 @@ PARAMS = {
 }
 
 
+def init_hook(**params):
+    print(params)
+
+    PARAMS.update(params)
+
+    PARAMS['render_factor'] = int(PARAMS['render_factor'])
+
+
 def _load_image(inputs, image_key):
     image = inputs.get(image_key)
     if image is None:
